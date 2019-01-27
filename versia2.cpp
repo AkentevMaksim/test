@@ -1,174 +1,80 @@
 
-
 #include <iostream>
 #include <string>
 #include <ctime>
 #include <cstdlib>
-
 // базовый класс элемента связного списка
 struct ClassBase {
-	ClassBase *prev; // указатель на предыдущий элемент связного списка
-	ClassBase *next; // указатель на следующий элемент связного списка
+	ClassBase *prev; // указатели
+	ClassBase *next;
 
-
-
-	// при создании объекта класса конструктор по-умолчанию
-	// назначает следующий и предыдущий элемент указывать на себя 
+	//  конструктор
 	ClassBase() : prev(this), next(this) {}
+	ClassBase(ClassBase *prev_, ClassBase *next_) : prev(prev_), next(next_) { prev->next = next->prev = this; }
 
-
-	// при создании с таким констуктором, элемент добавляет сам себя
-	// в связный список, представляя себя предыдущему и следующему элементу
-	ClassBase(ClassBase *prev_, ClassBase *next_)
-		: prev(prev_), next(next_) { // назначаются предыдущий и следующий элементы
-		// у предыдущего элемента следующим элементом назначается данный элемент
-		// и у следующего элемента предыдущим элементом назначается данный элемент
-		prev->next = next->prev = this;
-	}
-	// деструктор. при удалении элемента связного списка, 
-	// элемент убирает сам себя из списка
-	virtual ~ClassBase() {
-		prev->next = next;
-		next->prev = prev;
-	}
+	// деструктор
+	virtual ~ClassBase() { prev->next = next; next->prev = prev; }
 };
 
 
-
-
-// элемент связного списка, уже содержащий данные.
+// элемент связного списка,  содержащий данные.
 template <typename ValueType>
 struct Node : public ClassBase {
-	ValueType value; // то значение, которое хранит класс
-	// конструктор подставляет значения и вызывает конструтор предка
+	ValueType value;
 	Node(ClassBase *prev_, ClassBase *next_, ValueType value)
 		: ClassBase(prev_, next_), value(value) {}
 };
 
 
-
-
-// итератор. класс, который позволит получать доступ к данным,
-// сохранив инкапсуляцию
 template <typename ValueType>
 struct Iterator {
 public:
-	// создание итератора при помощи элемента связного списка
 	explicit Iterator(ClassBase *node_) : node(node_) {}
-	// создание копированием с другого итератора
 	Iterator(const Iterator &other) : node(other.node) {}
-	// получение значения элемента связного списка
-	ValueType &operator*() {
-		return static_cast<Node<ValueType>*>(node)->value;
-	}
-	// присваивание итератору другого итератора
-	Iterator &operator=(const Iterator &other) {
-		if (&other != this)
-			node = other.node;
-		return *this;
-	}
-	// переход к следующему элементу (постфиксный)
-	Iterator &operator++() {
-		node = node->next;
-		return *this;
-	}
-	// переход к предыдущему элементу (постфиксный)
-	Iterator &operator--() {
-		node = node->prev;
-		return *this;
-	}
-	// проверка итераторов на равенство
-	bool operator==(const Iterator &other) {
-		return node == other.node;
-	}
-	// ... на неравенство
-	bool operator!=(const Iterator &other) {
-		return node != other.node;
-	}
-private:
-	// собственно, элемент связного спискa, хранит итератор
-	ClassBase *node;
+
+	ValueType &operator*() { return static_cast<Node<ValueType>*>(node)->value; }
+
+	Iterator &operator=(const Iterator &other) { if (&other != this)	node = other.node;	return *this; }
+
+	Iterator &operator++() { node = node->next; return *this; }
+
+	Iterator &operator--() { node = node->prev; 	return *this; }
+
+	bool operator==(const Iterator &other) { return node == other.node; }
+
+	bool operator!=(const Iterator &other) { return node != other.node; }
+
+private: ClassBase *node;
+
 };
 
 
-
-
-
-// собственно, шаблон двусвязного списка
-// смотрите, как мало собственно кода, если убрать комментарии
 template <typename ValueType>
 class List {
 public:
-	// конструктору по-умолчанию делать в принципе нечего, он должен быть объявлен
 	List() : base() {};
-	// деструктор удаляет список функцией Clear
-	~List() {
-		Clear();
-	}
-	// функция проверяет, пустой ли список
-	bool Empty() {
-		// список пустой, если базовый элемент указывает сам на себя
-		return ((base.next == &base) && (base.prev == &base));
-	}
-	void Clear() {
-		// пока список не пуст
-		while (!Empty())
-			// удаляется первый элемент
-			// работу по удалению из списка сделает деструктор класса элемента
-			delete base.next;
-	}
-	// добавление элемента в конец списка
-	void PushBack(const ValueType &value) {
-		// просто создается новый элемент списка,
-		// всё остальное сделает конструктор класса ClassBase
-		new Node<ValueType>(base.prev, &base, value);
-	}
-	// удаление последнего элемента
-	void PopBack() {
-		// удаляется элемент связного списка 
-		// (в данном случае последний, но в принципе, сработает с любым)
-		// работу по фактическому удалению элемента из списка выполнит деструктор
-		// класса ClassBase
-		delete base.prev;
-	}
-	// плохой стиль, лучше делать через итераторы, но эта концепция, наверно,
-	// слишком сложна
+	~List() { Clear(); }
+	bool Empty() { return ((base.next == &base) && (base.prev == &base)); }
+	void Clear() { while (!Empty() delete base.next; }
+
+	void PushBack(const ValueType &value) { new Node<ValueType>(base.prev, &base, value); }
+	void PopBack() { delete base.prev; }
 	void PrintAll() {
-		// перебор всех элементов в одном цикле
 		for (ClassBase *node = base.next; node != &base; node = node->next)
-			// для получения значения элемент списка приводится к типу Node*
 			std::cout << static_cast<Node<ValueType>*>(node)->value;
 	}
-	// печать данных по условию
-	template <class Predicate> // класс или функция, принимающие параметром
-							   // ValueType и возвращающая true или false.
-	void PrintIf(Predicate condition) {
-		// цикл по всем элементам массива
+	template <class Predicate>
+	void PrintIf(Predicate condition)
+	{
 		for (ClassBase *node = base.next; node != &base; node = node->next)
-			// если условие выполняется
 			if (condition(static_cast<Node<ValueType>*>(node)->value))
-				// вывести значение
 				std::cout << static_cast<Node<ValueType>*>(node)->value;
 	}
 
-	// итератор на начало связного списка
-	Iterator<ValueType> Begin() {
-		// началом связного списка является элемент, на который указывает
-		// поле next переменной base
-		return Iterator<ValueType>(base.next);
-	}
-	// итератор на элемент связного списка _после_ последнего
-	Iterator<ValueType> End() {
-		// элементом за связным списком является само поле base
-		return Iterator<ValueType>(&base);
-	}
-	// поиск элемента в списке
-	// принимает параметрами первый элемент и последний элемент, в
-	// которых надо искать список
-	// и функтор, принимающий значение элемента и возвращающая true или
-	// false
-	// возвращает итератор найденного элемента или последний параметр
-	// если элемента не найдено
+
+	Iterator<ValueType> Begin() { return Iterator<ValueType>(base.next); }
+	Iterator<ValueType> End() { return Iterator<ValueType>(&base); }
+
 	template <class Predicate>
 	Iterator<ValueType> Search(Iterator<ValueType> begin,
 		Iterator<ValueType> end,
@@ -177,77 +83,53 @@ public:
 			if (condition(*begin)) break;
 		return begin;
 	}
-private:
-	// базовый эелемент.
-	// его поле next указывает на первый элемент списка
-	// поле prev указываеты на последний элемент списка
-	// если список пуст, next == prev == &base
-	ClassBase base;
+private:  ClassBase base;
 };
 
-// класс автобуса
+// класс список
 struct Spisok {
 	int number;
 	std::string stroka;
 	float veshestvennoe;
 	bool zadannoe;
-	//... тут наверно нужны другие поля
+
 	Spisok(int number_, std::string stroka_, float veshestvennoe_, bool zadannoe_)
-		: number(number_), stroka(stroka_), veshestvennoe(veshestvennoe_), zadannoe(zadannoe_) {}  // переопределенный оператор для вывода на экран
+		: number(number_), stroka(stroka_), veshestvennoe(veshestvennoe_), zadannoe(zadannoe_) {}
 	friend std::ostream& operator<<(std::ostream &stream, const Spisok &Spisok) {
-		return stream << "Числовое: " << Spisok.number
-			<< ", Строковое: " << Spisok.stroka
-			<< ", Вещественное: " << Spisok.veshestvennoe
-			<< ", Заданное: " << (Spisok.zadannoe ? "zadannoe_first" : "zadannoe_second")
-			<< std::endl;
+		return stream << "Числовое: " << Spisok.number << ", Строковое: " << Spisok.stroka << ", Вещественное: " << Spisok.veshestvennoe
+			<< ", Заданное: " << (Spisok.zadannoe ? "zadannoe_first" : "zadannoe_second") << std::endl;
 	}
-	// класс-функтор для поиска по номеру
-	struct IsNumber {
-		// запоминаем параметр в классе
+
+	struct IsNumber
+	{
 		IsNumber(int parameter_) : parameter(parameter_) {}
-		// оператор-функтор для сравнения параметра
-		bool operator()(const Spisok &Spisok) {
-			return Spisok.number == parameter;
-		}
-		int parameter; // параметр
+		bool operator()(const Spisok &Spisok) { return Spisok.number == parameter; }
+		int parameter;
 	};
-	// класс-функтор для поиска по заданному
-	struct Iszadannoe {
-		// запоминаем параметр в классе
+
+
+	struct Iszadannoe
+	{
+
 		Iszadannoe(bool parameter_) : parameter(parameter_) {}
-		// оператор-функтор для сравнения параметра
-		bool operator()(const Spisok &Spisok) {
-			return Spisok.zadannoe == parameter;
-		}
-		bool parameter; // параметр
+		bool operator()(const Spisok &Spisok) { return Spisok.zadannoe == parameter; }
+		bool parameter;
 	};
-	// класс-функтор для поиска по вещественному числу 
-	struct Isveshestvennoe {
-		// запоминаем параметр в классе
+	-
+		struct Isveshestvennoe
+	{
 		Isveshestvennoe(int parameter_) : parameter(parameter_) {}
-		// оператор-функтор для сравнения параметра
-		bool operator()(const Spisok &Spisok) {
-			return Spisok.veshestvennoe == parameter;
-		}
-		int parameter; // параметр
+		bool operator()(const Spisok &Spisok) { return Spisok.veshestvennoe == parameter; }
+		int parameter;
 	};
-	// класс-функтор для поиска по строке
-	struct Isstroka {
-		// запоминаем параметр в классе
+
+	struct Isstroka
+	{
 		Isstroka(const std::string &parameter_) : parameter(parameter_) {}
-		// оператор-функтор для сравнения параметра
-		bool operator()(const Spisok &Spisok) {
-			return Spisok.stroka == parameter;
-		}
-		std::string parameter; // параметр
+		bool operator()(const Spisok &Spisok) { return Spisok.stroka == parameter; }
+		std::string parameter;
 	};
 };
-
-
-
-
-
-
 
 
 
@@ -256,7 +138,7 @@ int main(int argc, char *argv[]) {
 	srand(time(NULL));
 	List<Spisok> a; // список 
 	for (int i = 0; i < 1; ++i)
-		a.PushBack(Spisok(i + 1, "an",  2.1, rand() % 2));
+		a.PushBack(Spisok(i + 1, "an", 2.1, rand() % 2));
 	for (int i = 1; i < 4; ++i)
 		a.PushBack(Spisok(i + 1, "an1", 2.2, rand() % 2));
 	for (int i = 4; i < 7; ++i)
@@ -271,7 +153,7 @@ int main(int argc, char *argv[]) {
 	Iterator<Spisok> b = a.Search(a.Begin(), a.End(), Spisok::IsNumber(5));
 	if (b != a.End())
 		std::cout << *b;
-		std::cout << "\n";
+	std::cout << "\n";
 
 
 	std::cout << "по строке " << "\n";
@@ -280,8 +162,8 @@ int main(int argc, char *argv[]) {
 		std::cout << *c;
 	std::cout << "\n";
 
-	
-		
-		system("PAUSE");
+
+
+	system("PAUSE");
 	return 0;
 };
